@@ -1,0 +1,5 @@
+markdown
+weasyprint
+Pygments
+matplotlib
+latex2mathml

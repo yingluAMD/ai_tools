@@ -1,0 +1,5 @@
+marker-pdf
+PyMuPDF
+pytesseract
+Pillow
+easyocr
