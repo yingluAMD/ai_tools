@@ -25,6 +25,7 @@ except ImportError:
 
 try:
     import pygments  # noqa: F401 – needed by codehilite
+    from pygments.formatters import HtmlFormatter as _HtmlFormatter
 except ImportError:
     pygments = None
 
@@ -257,6 +258,8 @@ def _protect_math(md_text):
 _MATHTEXT_FIXUPS = [
     (r"\bmod", r"\ \mathrm{mod}\ "),
     (r"\pmod", r"\ \mathrm{mod}\ "),
+    (r"\lvert", r"\vert"),
+    (r"\rvert", r"\vert"),
 ]
 
 
@@ -414,7 +417,9 @@ def convert(input_path, output_path=None, no_toc=False, title=None):
         "<!DOCTYPE html>"
         '<html lang="zh-CN"><head><meta charset="utf-8">'
         f"<title>{doc_title}</title>"
-        f"<style>{CSS}</style>"
+        f"<style>{CSS}"
+        f"{_HtmlFormatter(style='default').get_style_defs('.codehilite') if pygments else ''}"
+        f"</style>"
         "</head><body>"
         f"{toc_section}"
         f'<div class="content">{body}</div>'

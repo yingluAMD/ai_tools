@@ -71,7 +71,7 @@ python3 ~/.cursor/skills/md-to-pdf/convert.py "<MD文件路径>"
 - **段落保护**：孤行/寡行控制（orphans/widows 各 3 行）
 - **图片**：自动居中，限制最大高度不超过页面
 - **数学公式**：`$...$` 和 `$$...$$` LaTeX 公式优先用 matplotlib mathtext 渲染为 SVG（真正的分数线、正确上下标），含中文的公式自动回退到 latex2mathml MathML
-- **代码**：等宽字体，浅灰背景，自动折行
+- **代码**：等宽字体，浅灰背景，自动折行；标注语言的代码块通过 Pygments 语法高亮显示（default 主题）
 - **表格**：全宽带边框，表头灰底居中
 
 ## 示例
@@ -92,15 +92,15 @@ python3 ~/.cursor/skills/md-to-pdf/convert.py report.md -o output/report.pdf --t
 
 ### 实际案例：CuTe Layout 论文
 
-输入 Markdown：`inout/2603.02298v1_CuTeLayoutRepresentationAndAlgebra_zh.md`（750 行，含 6 张图片和大量 LaTeX 公式的中英双语学术论文）
+输入 Markdown：`inout/2603.02298v1_CuTeLayoutRepresentationAndAlgebra_zh.md`（2299 行，含 9 张图片和大量 LaTeX 公式的中英双语学术论文）
 
 ```bash
 python3 ~/.cursor/skills/md-to-pdf/convert.py inout/2603.02298v1_CuTeLayoutRepresentationAndAlgebra_zh.md
 ```
 
-输出：`inout/2603.02298v1_CuTeLayoutRepresentationAndAlgebra_zh.pdf`（1.9 MB）
+输出：`inout/2603.02298v1_CuTeLayoutRepresentationAndAlgebra_zh.pdf`（2.3 MB）
 
-该案例覆盖了主要排版特性：自动检测已有目录（不重复生成）、LaTeX 数学公式渲染（matplotlib mathtext 为主，含中文的公式回退到 MathML）、图表不跨页、PNG 无损图片、参考文献逐行显示。
+该案例覆盖了主要排版特性：自动检测已有目录（不重复生成）、LaTeX 数学公式渲染（matplotlib mathtext 为主，含中文的公式回退到 MathML，`\lvert`/`\rvert` 自动转换为 `\vert`）、图表不跨页、PNG 无损图片、参考文献逐行显示。
 
 ## 故障排除
 
