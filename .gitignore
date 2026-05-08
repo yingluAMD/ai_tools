@@ -25,3 +25,7 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+
+
+# md_to_pdf local vendor
+md_to_pdf/vendor/

@@ -14,6 +14,7 @@ A collection of practical AI/LLM utilities built by an HPC developer who works d
 ```
 ai_tools/
 ├── README.md                 # This file
+├── install.sh                # One-command installer
 ├── claude.md                 # AI agent project guide
 ├── LICENSE                   # MIT License
 │
@@ -33,23 +34,34 @@ Each tool directory is **self-contained**: `SKILL.md` (workflow definition for C
 
 ## Installation
 
-### 1. Clone the repo
+### Quick Install
 
 ```bash
 git clone https://github.com/yourname/ai_tools.git
 cd ai_tools
+./install.sh            # symlink skills + install all dependencies
 ```
 
-### 2. Link skills into Cursor
+Options:
 
-Create symlinks so Cursor can discover the skills:
+```bash
+./install.sh --link-only   # only create symlinks, skip dependencies
+./install.sh --deps-only   # only install dependencies, skip symlinks
+```
+
+### Manual Install
+
+<details>
+<summary>Click to expand manual steps</summary>
+
+#### 1. Link skills into Cursor
 
 ```bash
 ln -sfn "$(pwd)/translate_pdf" ~/.cursor/skills/translate-pdf
 ln -sfn "$(pwd)/md_to_pdf"     ~/.cursor/skills/md-to-pdf
 ```
 
-### 3. Install dependencies per tool
+#### 2. Install dependencies
 
 **translate_pdf:**
 
@@ -65,6 +77,8 @@ pip install markdown weasyprint Pygments
 sudo apt-get install libpango1.0-dev libcairo2-dev libgdk-pixbuf-2.0-dev libffi-dev shared-mime-info
 sudo apt-get install fonts-noto-cjk         # Chinese font support
 ```
+
+</details>
 
 ## Usage
 

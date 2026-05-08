@@ -1,3 +1,5 @@
+# Python deps only. KaTeX SSR (preferred math renderer) additionally needs
+# Node.js 16+ and the KaTeX assets, installed once via ./install_katex.sh.
 markdown
 weasyprint
 Pygments
