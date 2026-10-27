@@ -12,10 +12,12 @@ build/
 
 # Virtual environments
 .venv/
+.venv-python/
 venv/
 env/
 
 # IDE
+.cursor/tmp/
 .idea/
 .vscode/
 *.swp

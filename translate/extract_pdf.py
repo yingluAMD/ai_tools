@@ -232,22 +232,37 @@ def extract_with_marker(pdf_path: str, output_dir: str, device: str) -> tuple[st
 # Step 2: PyMuPDF image extraction & quality upgrade
 # ---------------------------------------------------------------------------
 
+_DECORATION_PAGE_RATIO = 0.30  # image appearing on >=30% of pages -> page header/footer
+_TINY_IMG_DIM = 80              # images < 80x80 px -> bullet/icon decoration
+
+
 def extract_images_pymupdf(pdf_path: str, output_dir: str) -> tuple[list[str], dict]:
     """Extract full-resolution images via PyMuPDF with position metadata.
 
+    Applies two filters before writing files to disk:
+    - Decoration filter: any image whose byte content (MD5) appears on
+      >= 30% of all pages is treated as page header/footer (logo, watermark)
+      and skipped entirely.
+    - Tiny filter: images smaller than 80x80 px are dropped as bullets/icons.
+
+    Identical raster bytes shared across multiple pages are written once and
+    referenced by every page that contains them via page_map.
+
     Returns (extracted_paths, page_map) where page_map is:
-        {page_1indexed: [{"path": ..., "w": ..., "h": ..., "rect": (x0,y0,x1,y1)}, ...]}
+        {page_1indexed: [{"path": ..., "name": ..., "w": ..., "h": ..., "rect": (x0,y0,x1,y1)}, ...]}
     """
     import fitz
+    import hashlib
 
     images_dir = os.path.join(output_dir, "images")
     os.makedirs(images_dir, exist_ok=True)
 
     doc = fitz.open(pdf_path)
-    extracted = []
-    page_map: dict[int, list[dict]] = {}
+    total_pages = len(doc)
+    decoration_threshold = max(3, int(total_pages * _DECORATION_PAGE_RATIO))
 
-    for page_idx in range(len(doc)):
+    occurrences: list[dict] = []
+    for page_idx in range(total_pages):
         page = doc[page_idx]
         for img_idx, img_info in enumerate(page.get_images(full=True)):
             xref = img_info[0]
@@ -255,9 +270,6 @@ def extract_images_pymupdf(pdf_path: str, output_dir: str) -> tuple[list[str], d
                 base = doc.extract_image(xref)
             except Exception:
                 continue
-
-            filename = f"page{page_idx + 1}_img{img_idx + 1}.png"
-            path = os.path.join(images_dir, filename)
 
             img_bytes = base["image"]
             ext = base.get("ext", "png")
@@ -269,23 +281,76 @@ def extract_images_pymupdf(pdf_path: str, output_dir: str) -> tuple[list[str], d
                 pil_img.save(buf, format="PNG")
                 img_bytes = buf.getvalue()
 
-            with open(path, "wb") as f:
-                f.write(img_bytes)
-            extracted.append(path)
-
+            digest = hashlib.md5(img_bytes).hexdigest()[:12]
             rects = page.get_image_rects(xref)
             rect = (rects[0].x0, rects[0].y0, rects[0].x1, rects[0].y1) if rects else None
 
-            page_1idx = page_idx + 1
-            page_map.setdefault(page_1idx, []).append({
-                "path": path,
-                "name": filename,
+            occurrences.append({
+                "page_idx": page_idx,
+                "img_idx": img_idx,
+                "bytes": img_bytes,
+                "digest": digest,
                 "w": base["width"],
                 "h": base["height"],
                 "rect": rect,
             })
-
     doc.close()
+
+    pages_per_digest: dict[str, set[int]] = {}
+    for o in occurrences:
+        pages_per_digest.setdefault(o["digest"], set()).add(o["page_idx"])
+
+    decoration_digests = {
+        h for h, pages in pages_per_digest.items() if len(pages) >= decoration_threshold
+    }
+
+    written_paths: dict[str, tuple[str, str]] = {}
+    extracted: list[str] = []
+    page_map: dict[int, list[dict]] = {}
+    dropped_decoration_occ = 0
+    dropped_tiny_occ = 0
+    deduped_occ = 0
+
+    for o in occurrences:
+        if o["digest"] in decoration_digests:
+            dropped_decoration_occ += 1
+            continue
+        if o["w"] < _TINY_IMG_DIM and o["h"] < _TINY_IMG_DIM:
+            dropped_tiny_occ += 1
+            continue
+
+        if o["digest"] in written_paths:
+            deduped_occ += 1
+        else:
+            filename = f"page{o['page_idx'] + 1}_img{o['img_idx'] + 1}.png"
+            path = os.path.join(images_dir, filename)
+            with open(path, "wb") as f:
+                f.write(o["bytes"])
+            written_paths[o["digest"]] = (path, filename)
+            extracted.append(path)
+
+        path, filename = written_paths[o["digest"]]
+        page_1idx = o["page_idx"] + 1
+        page_map.setdefault(page_1idx, []).append({
+            "path": path,
+            "name": filename,
+            "w": o["w"],
+            "h": o["h"],
+            "rect": o["rect"],
+        })
+
+    if dropped_decoration_occ:
+        print(f"[Images] Filtered {dropped_decoration_occ} decoration occurrence(s) "
+              f"({len(decoration_digests)} unique image(s) on >={decoration_threshold} pages)",
+              file=sys.stderr)
+    if dropped_tiny_occ:
+        print(f"[Images] Filtered {dropped_tiny_occ} tiny (<{_TINY_IMG_DIM}x{_TINY_IMG_DIM} px) occurrence(s)",
+              file=sys.stderr)
+    if deduped_occ:
+        print(f"[Images] Deduplicated {deduped_occ} identical raster occurrence(s) "
+              f"(written once, referenced by every page)",
+              file=sys.stderr)
+
     return extracted, page_map
 
 
@@ -625,8 +690,360 @@ def _fix_vector_figures(markdown_text: str, marker_images: dict,
 
 
 # ---------------------------------------------------------------------------
+# Step 2.5: Decoration cleanup pass (catches Marker leftovers)
+# ---------------------------------------------------------------------------
+
+def _strip_decoration_images(markdown_text: str, all_images: dict, images_dir: str,
+                             total_pages: int) -> tuple[str, dict]:
+    """Drop image references that look like page-header/footer decorations.
+
+    Catches images that survived ``extract_images_pymupdf`` (e.g. Marker-only
+    rasters such as ``_page_*_Picture_*.png``):
+
+    - Same byte content (MD5) referenced on >= 30% of pages -> logo/watermark
+    - Image dimensions smaller than 80x80 px -> bullet/icon
+    """
+    import hashlib
+    from PIL import Image as _PILImage
+
+    decoration_threshold = max(3, int(total_pages * _DECORATION_PAGE_RATIO))
+
+    file_hash: dict[str, str] = {}
+    file_dims: dict[str, tuple[int, int]] = {}
+    for name, path in all_images.items():
+        if not os.path.exists(path):
+            continue
+        try:
+            with open(path, "rb") as f:
+                file_hash[name] = hashlib.md5(f.read()).hexdigest()[:12]
+        except OSError:
+            continue
+        try:
+            file_dims[name] = _PILImage.open(path).size
+        except Exception:
+            file_dims[name] = (0, 0)
+
+    ref_pattern = re.compile(r"!\[[^\]]*\]\(([^)]+)\)")
+    ref_counts: dict[str, int] = {}
+    for m in ref_pattern.finditer(markdown_text):
+        bname = os.path.basename(m.group(1))
+        ref_counts[bname] = ref_counts.get(bname, 0) + 1
+
+    refs_per_hash: dict[str, int] = {}
+    for name, h in file_hash.items():
+        refs_per_hash[h] = refs_per_hash.get(h, 0) + ref_counts.get(name, 0)
+
+    decoration_files: set[str] = set()
+    for h, count in refs_per_hash.items():
+        if count >= decoration_threshold:
+            for name, fh in file_hash.items():
+                if fh == h:
+                    decoration_files.add(name)
+    for name, (w, hh) in file_dims.items():
+        if 0 < w < _TINY_IMG_DIM and 0 < hh < _TINY_IMG_DIM:
+            decoration_files.add(name)
+
+    if not decoration_files:
+        return markdown_text, all_images
+
+    def _drop(m):
+        bname = os.path.basename(m.group(1))
+        return "" if bname in decoration_files else m.group(0)
+
+    new_text = ref_pattern.sub(_drop, markdown_text)
+    new_text = re.sub(r"\n{3,}", "\n\n", new_text)
+
+    new_images = dict(all_images)
+    for name in decoration_files:
+        path = new_images.pop(name, None)
+        if path and os.path.exists(path):
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+
+    print(f"[Images] Dropped {len(decoration_files)} decoration image(s) "
+          f"(hash repeats >={decoration_threshold} pages or <{_TINY_IMG_DIM}x{_TINY_IMG_DIM} px)",
+          file=sys.stderr)
+    return new_text, new_images
+
+
+# ---------------------------------------------------------------------------
+# Step 2.5: Table reconstruction
+# ---------------------------------------------------------------------------
+
+_SEP_CELL_RE = re.compile(r"^\s*:?-+:?\s*$")
+
+
+def _table_cells(line: str) -> list[str]:
+    s = line.lstrip()
+    if s.startswith(">"):
+        s = s[1:].lstrip()
+    if not s.startswith("|"):
+        return []
+    parts = s.split("|")
+    if parts and parts[0] == "":
+        parts = parts[1:]
+    if parts and parts[-1].strip() == "":
+        parts = parts[:-1]
+    return [c.strip() for c in parts]
+
+
+def _is_separator_row(cells: list[str]) -> bool:
+    return bool(cells) and all(_SEP_CELL_RE.match(c) for c in cells)
+
+
+def _split_prose_pipe_tail(line: str) -> tuple[str, str] | None:
+    """Detect ``prose | cell | cell ... <br?`` hybrid; return (prose, tail).
+
+    Marker frequently emits a paragraph followed by the start of a table on
+    the same line.  This split makes the table parse-able as its own block.
+    """
+    s = line.rstrip()
+    pipes = [i for i, c in enumerate(s) if c == "|"]
+    if len(pipes) < 3:
+        return None
+    starts_at = pipes[0]
+    last = pipes[0]
+    for p in pipes[1:]:
+        if p - last > 40:
+            starts_at = p
+        last = p
+    if starts_at == 0:
+        return None
+    prose = s[:starts_at].rstrip()
+    tail = s[starts_at:].rstrip()
+    if len(prose) < 5:
+        return None
+    return prose, tail
+
+
+def _normalize_cells(cells: list[str], width: int) -> list[str]:
+    if len(cells) == width:
+        return cells
+    if len(cells) > width:
+        return cells[:width - 1] + [" ".join(cells[width - 1:])]
+    return cells + [""] * (width - len(cells))
+
+
+def _reconstruct_broken_tables(text: str) -> str:
+    """Rebuild markdown tables that Marker emits with broken multi-line headers.
+
+    Marker's PDF -> Markdown extraction inserts ``<br>`` tags into table cells
+    that span multiple lines, but blank-line breaks and ``>`` blockquote
+    prefixes around those tags often confuse downstream Markdown parsers.
+    This function:
+
+    1. Splits ``prose | cell | ...`` hybrid lines into separate prose + table
+       blocks (Pass 1).
+    2. For each separator row, walks BACKWARD absorbing only fragments that
+       look broken (``>`` prefix, ``<br`` content, orphan trailing pieces, or
+       cell counts smaller than the body width).  Walks FORWARD until a
+       second separator row is found (= boundary to next table).  Emits a
+       clean table with normalized columns (Pass 2).
+    """
+    from collections import Counter as _Counter
+
+    lines = text.splitlines()
+
+    pass1: list[str] = []
+    for ln in lines:
+        s = ln.lstrip()
+        if s.startswith("|") or s.startswith(">"):
+            pass1.append(ln)
+            continue
+        if not ln.strip():
+            pass1.append(ln)
+            continue
+        result = _split_prose_pipe_tail(ln)
+        if result is None:
+            pass1.append(ln)
+            continue
+        prose, tail = result
+        pass1.append(prose)
+        pass1.append("")
+        pass1.append(tail)
+    lines = pass1
+
+    n = len(lines)
+    out: list[str] = []
+    i = 0
+    fixes = 0
+    while i < n:
+        ln = lines[i]
+        c = _table_cells(ln)
+        if not c or not _is_separator_row(c):
+            out.append(ln)
+            i += 1
+            continue
+
+        # Peek body widths below the separator.
+        peek_widths: list[int] = []
+        pj = i + 1
+        peek_seen_sep = False
+        while pj < n and len(peek_widths) < 4:
+            pjc = _table_cells(lines[pj])
+            if not pjc:
+                break
+            if _is_separator_row(pjc):
+                if peek_seen_sep:
+                    break
+                peek_seen_sep = True
+                pj += 1
+                continue
+            peek_widths.append(len(pjc))
+            pj += 1
+        peek_w = (_Counter(peek_widths).most_common(1)[0][0]
+                  if peek_widths else 0)
+
+        # Walk backward, absorbing only "broken" fragments.
+        header_frags: list[str] = []
+        consumed_back = 0
+        back = i - 1
+        crossed_blank = 0
+        while back >= 0 and (i - back) < 12:
+            bln = lines[back]
+            if not bln.strip():
+                crossed_blank += 1
+                if crossed_blank > 3:
+                    break
+                consumed_back += 1
+                back -= 1
+                continue
+            stripped = bln.lstrip()
+            had_blockquote = stripped.startswith(">")
+            if had_blockquote:
+                stripped = stripped[1:].lstrip()
+            if "|" not in stripped:
+                break
+            c2 = _table_cells(bln)
+            if c2 and _is_separator_row(c2):
+                consumed_back += 1
+                back -= 1
+                crossed_blank = 0
+                continue
+            has_br = "<br" in stripped
+            no_lead_pipe = not stripped.startswith("|")
+            cc = len(c2) if c2 else 0
+            looks_broken = (
+                had_blockquote
+                or has_br
+                or no_lead_pipe
+                or (peek_w > 0 and 0 < cc < peek_w)
+            )
+            if not looks_broken:
+                break
+            header_frags.append(stripped)
+            consumed_back += 1
+            back -= 1
+            crossed_blank = 0
+
+        if not header_frags:
+            out.append(ln)
+            i += 1
+            continue
+
+        # Walk forward; stop on second separator (= next table boundary).
+        body_rows: list[list[str]] = []
+        j = i + 1
+        consumed_forward = 0
+        seen_inner_sep = False
+        while j < n:
+            jc = _table_cells(lines[j])
+            if not jc:
+                break
+            if _is_separator_row(jc):
+                if seen_inner_sep or body_rows:
+                    break
+                seen_inner_sep = True
+                consumed_forward += 1
+                j += 1
+                continue
+            body_rows.append(jc)
+            consumed_forward += 1
+            j += 1
+        if len(body_rows) < 2:
+            out.append(ln)
+            i += 1
+            continue
+        target_w = _Counter(len(r) for r in body_rows).most_common(1)[0][0]
+        if target_w < 2:
+            out.append(ln)
+            i += 1
+            continue
+
+        header_frags.reverse()
+        joined = " ".join(f.rstrip() for f in header_frags)
+        joined = re.sub(r"<br\s*/?>?\s*", " ", joined)
+        joined = re.sub(r"\s+", " ", joined).strip()
+        if not joined.startswith("|"):
+            joined = "| " + joined.lstrip("|").strip()
+        if not joined.endswith("|"):
+            joined = joined.rstrip() + " |"
+        header_cells = _table_cells(joined)
+        if not header_cells:
+            out.append(ln)
+            i += 1
+            continue
+        header_cells = _normalize_cells(header_cells, target_w)
+
+        if consumed_back > 0:
+            out = out[:-consumed_back]
+        while out and not out[-1].strip():
+            out.pop()
+        out.append("")
+
+        out.append("| " + " | ".join(header_cells) + " |")
+        out.append("|" + "|".join(["---"] * target_w) + "|")
+        for r in body_rows:
+            r = _normalize_cells(r, target_w)
+            out.append("| " + " | ".join(r) + " |")
+
+        i += consumed_forward + 1
+        fixes += 1
+
+    if fixes:
+        print(f"[Tables] Reconstructed {fixes} broken table(s)", file=sys.stderr)
+
+    new_text = "\n".join(out) + "\n" if out and out[-1] != "" else "\n".join(out)
+    new_text = re.sub(r"\n{3,}", "\n\n", new_text)
+    return new_text
+
+
+# ---------------------------------------------------------------------------
 # Step 3: OCR
 # ---------------------------------------------------------------------------
+
+_OCR_SENT_SPLIT = re.compile(r"[.!?。！？\n]+")
+_OCR_TOKEN_RE = re.compile(r"\w+", re.UNICODE)
+
+
+def _is_meaningful_ocr(text: str) -> bool:
+    """Heuristic: filter out OCR output that is just a label cloud.
+
+    Architecture diagrams, dataflow charts, etc. yield OCR text consisting of
+    repeated short labels (``SIMD 0 SIMD 1 SIMD 2 ... VGPR VGPR ...``).  Such
+    "text" pollutes the bilingual MD with garbage that LLMs can only translate
+    word-by-word.  We drop OCR results where:
+
+    - fewer than 5 tokens, OR
+    - unique-token ratio < 0.4 (>60% of tokens are repeats), OR
+    - average sentence length < 4 tokens (no real prose)
+    """
+    tokens = _OCR_TOKEN_RE.findall(text.lower())
+    if len(tokens) < 5:
+        return False
+    if len(set(tokens)) / len(tokens) < 0.4:
+        return False
+    sentence_lens = [
+        len(s.split()) for s in _OCR_SENT_SPLIT.split(text) if s.strip()
+    ]
+    if not sentence_lens:
+        return False
+    if sum(sentence_lens) / len(sentence_lens) < 4:
+        return False
+    return True
+
 
 def _ocr_with_easyocr(image_paths: dict[str, str], threshold: int, gpu: bool) -> dict:
     """GPU-accelerated OCR via easyocr."""
@@ -634,6 +1051,7 @@ def _ocr_with_easyocr(image_paths: dict[str, str], threshold: int, gpu: bool) ->
 
     reader = easyocr.Reader(["en", "ch_sim"], gpu=gpu)
     report = {}
+    dropped_quality = 0
 
     for name, path in image_paths.items():
         if Path(path).suffix.lower() not in _IMAGE_EXTS:
@@ -644,9 +1062,16 @@ def _ocr_with_easyocr(image_paths: dict[str, str], threshold: int, gpu: bool) ->
         except Exception:
             continue
         word_count = len(text.split())
-        if word_count >= threshold:
-            report[name] = {"path": path, "word_count": word_count, "text": text}
+        if word_count < threshold:
+            continue
+        if not _is_meaningful_ocr(text):
+            dropped_quality += 1
+            continue
+        report[name] = {"path": path, "word_count": word_count, "text": text}
 
+    if dropped_quality:
+        print(f"[OCR] Discarded {dropped_quality} label-cloud OCR result(s) "
+              f"(repetitive / no prose)", file=sys.stderr)
     return report
 
 
@@ -656,6 +1081,7 @@ def _ocr_with_tesseract(image_paths: dict[str, str], threshold: int) -> dict:
     from PIL import Image
 
     report = {}
+    dropped_quality = 0
 
     for name, path in image_paths.items():
         if Path(path).suffix.lower() not in _IMAGE_EXTS:
@@ -665,9 +1091,16 @@ def _ocr_with_tesseract(image_paths: dict[str, str], threshold: int) -> dict:
         except Exception:
             continue
         word_count = len(text.split())
-        if word_count >= threshold:
-            report[name] = {"path": path, "word_count": word_count, "text": text}
+        if word_count < threshold:
+            continue
+        if not _is_meaningful_ocr(text):
+            dropped_quality += 1
+            continue
+        report[name] = {"path": path, "word_count": word_count, "text": text}
 
+    if dropped_quality:
+        print(f"[OCR] Discarded {dropped_quality} label-cloud OCR result(s) "
+              f"(repetitive / no prose)", file=sys.stderr)
     return report
 
 
@@ -708,6 +1141,8 @@ def main():
     parser.add_argument("--no-ocr", action="store_true", help="Skip OCR processing")
     parser.add_argument("--device", default="auto", choices=["auto", "cpu", "cuda"],
                         help="Compute device: auto (detect GPU), cpu (force CPU), cuda (prefer GPU)")
+    parser.add_argument("--force", action="store_true",
+                        help="Force re-extraction even if extracted.md is up-to-date")
     args = parser.parse_args()
 
     pdf_path = os.path.abspath(args.pdf)
@@ -720,6 +1155,45 @@ def main():
     output_dir = os.path.abspath(output_dir)
     os.makedirs(output_dir, exist_ok=True)
 
+    # Idempotency: skip work if extracted.md is fresh.
+    # Detection: extracted.md exists and is newer than the input PDF.
+    md_path = os.path.join(output_dir, "extracted.md")
+    if not args.force and os.path.exists(md_path):
+        pdf_mtime = os.path.getmtime(pdf_path)
+        md_mtime = os.path.getmtime(md_path)
+        if md_mtime >= pdf_mtime:
+            try:
+                with open(md_path, "r", encoding="utf-8") as f:
+                    md_lines = sum(1 for _ in f)
+            except OSError:
+                md_lines = 0
+            images_dir = os.path.join(output_dir, "images")
+            try:
+                image_files = sorted(os.listdir(images_dir)) if os.path.isdir(images_dir) else []
+            except OSError:
+                image_files = []
+            ocr_path = os.path.join(output_dir, "ocr_report.json")
+            text_heavy = 0
+            if os.path.exists(ocr_path):
+                try:
+                    with open(ocr_path, "r", encoding="utf-8") as f:
+                        text_heavy = len(json.load(f) or {})
+                except (OSError, json.JSONDecodeError):
+                    text_heavy = 0
+            summary = {
+                "status": "cached",
+                "pdf": pdf_path,
+                "output_dir": output_dir,
+                "markdown_file": md_path,
+                "markdown_lines": md_lines,
+                "total_images": len(image_files),
+                "text_heavy_images": text_heavy,
+                "image_files": image_files,
+                "note": "Use --force to re-extract.",
+            }
+            print(json.dumps(summary, ensure_ascii=False, indent=2))
+            return
+
     device = detect_device(args.device)
 
     # Step 1: Marker extraction
@@ -727,7 +1201,6 @@ def main():
     markdown_text, marker_images = extract_with_marker(pdf_path, output_dir, device)
     markdown_text = _tag_code_blocks(markdown_text)
 
-    md_path = os.path.join(output_dir, "extracted.md")
     with open(md_path, "w", encoding="utf-8") as f:
         f.write(markdown_text)
 
@@ -750,6 +1223,19 @@ def main():
     markdown_text, all_images = _fix_vector_figures(
         markdown_text, all_images, pdf_path, page_map, images_dir,
     )
+
+    # Final decoration cleanup: catch Marker-only logos / icons that slipped past
+    # PyMuPDF's hash-based filter (different hash but same visual function).
+    import fitz as _fitz
+    with _fitz.open(pdf_path) as _doc:
+        _total_pages = len(_doc)
+    markdown_text, all_images = _strip_decoration_images(
+        markdown_text, all_images, images_dir, _total_pages,
+    )
+
+    # Reconstruct tables broken by Marker's `<br>` cell-content handling
+    # before the LLM translation step sees them.
+    markdown_text = _reconstruct_broken_tables(markdown_text)
 
     with open(md_path, "w", encoding="utf-8") as f:
         f.write(markdown_text)

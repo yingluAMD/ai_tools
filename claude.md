@@ -30,7 +30,7 @@ ai_tools/
 ├── README.md                 # Top-level project README
 ├── .gitignore                # Ignore inout/, __pycache__, etc.
 │
-├── translate_pdf/            # Tool: PDF bilingual translation (EN → ZH)
+├── translate/                # Tool: bilingual translation of PDFs, online papers, and blogs (EN → ZH)
 │   ├── SKILL.md              # Cursor Skill definition (workflow core)
 │   ├── extract_pdf.py        # PDF → Markdown + images + OCR report
 │   ├── requirements.txt      # Python dependencies
@@ -50,17 +50,17 @@ ai_tools/
 Each tool's `SKILL.md` uses `~/.cursor/skills/<skill-name>/` paths for script references. Users symlink tool directories into `~/.cursor/skills/`:
 
 ```bash
-ln -sfn /path/to/ai_tools/translate_pdf  ~/.cursor/skills/translate-pdf
+ln -sfn /path/to/ai_tools/translate      ~/.cursor/skills/translate
 ln -sfn /path/to/ai_tools/md_to_pdf      ~/.cursor/skills/md-to-pdf
 ```
 
-The YAML `name` field in SKILL.md uses kebab-case (e.g., `translate-pdf`) matching the Cursor skill directory name, while repo directories use snake_case per project convention.
+The YAML `name` field in SKILL.md uses kebab-case (e.g., `md-to-pdf`) matching the Cursor skill directory name, while repo directories use snake_case per project convention.
 
 ## Coding Conventions
 
 ### Naming
 
-- **Files & directories**: `snake_case` (e.g., `translate_pdf/`, `config.py`)
+- **Files & directories**: `snake_case` (e.g., `translate/`, `config.py`)
 - **Functions & variables**: `snake_case`
 - **Classes**: `PascalCase`
 - **Constants**: `UPPER_SNAKE_CASE`
@@ -98,7 +98,7 @@ def translate(text: str, model: str = "gpt-4o") -> str:
 - Commit messages in **English**, following [Conventional Commits](https://www.conventionalcommits.org/):
   - `feat: add PDF table extraction`
   - `fix: handle empty OCR result`
-  - `docs: update translate_pdf README`
+  - `docs: update translate README`
 - Keep commits atomic — one logical change per commit.
 
 ## Guidelines for Claude

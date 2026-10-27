@@ -3,9 +3,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILLS_DIR="$HOME/.cursor/skills"
+VENV_DIR="${VENV_DIR:-$SCRIPT_DIR/.venv}"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
 
 SKILLS=(
-    "translate_pdf:translate-pdf"
+    "translate:translate"
     "md_to_pdf:md-to-pdf"
 )
 
@@ -54,7 +56,7 @@ install_pytorch() {
     case "$gpu" in
         nvidia)
             info "Detected NVIDIA GPU — installing PyTorch with CUDA support"
-            pip install torch torchvision
+            "$PYTHON_BIN" -m pip install torch torchvision
             ;;
         amd)
             local rocm_ver
@@ -63,25 +65,42 @@ install_pytorch() {
             else
                 rocm_ver="6.2"
             fi
-            local whl_tag="rocm${rocm_ver}"
             info "Detected AMD GPU (ROCm ${rocm_ver}) — installing PyTorch with ROCm support"
-            pip install torch torchvision --index-url "https://download.pytorch.org/whl/${whl_tag}"
+            if [[ "$rocm_ver" == "10.1" ]]; then
+                # AMD's modular wheels require a device extra for GPU libraries.
+                # Set ROCM_DEVICE=gfx950 for MI350/MI355X, or use all architectures.
+                local device="${ROCM_DEVICE:-all}"
+                "$PYTHON_BIN" -m pip install \
+                    "torch[device-${device}]==2.14.0+rocm10.1.0" \
+                    "torchvision[device-${device}]==0.29.0a0+rocm10.1.0" \
+                    --index-url https://stable.repo.amd.com/rocm/whl-next/
+            else
+                "$PYTHON_BIN" -m pip install torch torchvision \
+                    --index-url "https://download.pytorch.org/whl/rocm${rocm_ver}"
+            fi
             ;;
         *)
             info "No GPU detected — installing CPU-only PyTorch"
-            pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+            "$PYTHON_BIN" -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
             ;;
     esac
 }
 
 install_deps() {
+    if [[ ! -x "$VENV_DIR/bin/python" ]]; then
+        info "Creating virtual environment: $VENV_DIR"
+        "$PYTHON_BIN" -m venv "$VENV_DIR"
+    fi
+    PYTHON_BIN="$VENV_DIR/bin/python"
+    "$PYTHON_BIN" -m pip --version >/dev/null
+    info "Installing into $VENV_DIR"
     install_pytorch
 
-    info "Installing Python dependencies for translate_pdf ..."
-    pip install -r "$SCRIPT_DIR/translate_pdf/requirements.txt"
+    info "Installing Python dependencies for translate ..."
+    "$PYTHON_BIN" -m pip install -r "$SCRIPT_DIR/translate/requirements.txt"
 
     info "Installing Python dependencies for md_to_pdf ..."
-    pip install markdown weasyprint Pygments
+    "$PYTHON_BIN" -m pip install -r "$SCRIPT_DIR/md_to_pdf/requirements.txt"
 
     info "Installing system packages (may require sudo) ..."
     sudo apt-get install -y \
@@ -107,6 +126,11 @@ Options:
   --deps-only        Only install dependencies (skip symlink creation)
   --gpu TYPE         Override GPU auto-detection (nvidia | amd | cpu)
   -h, --help         Show this help message
+
+Environment:
+  VENV_DIR          Shared Python environment (default: <repo>/.venv)
+  PYTHON_BIN        Python used to create the environment (default: python3)
+  ROCM_DEVICE       AMD wheel device extra for ROCm 10.1 (default: all)
 EOF
 }
 

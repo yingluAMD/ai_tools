@@ -6,7 +6,7 @@ A collection of practical AI/LLM utilities built by an HPC developer who works d
 
 | Tool | Description |
 |------|-------------|
-| [`translate_pdf`](translate_pdf/) | Translate English technical PDFs (papers, specs, slides) into bilingual English-Chinese Markdown with paragraph-by-paragraph comparison. Uses Marker for PDF parsing, PyMuPDF for image extraction, and Tesseract/EasyOCR for OCR. |
+| [`translate`](translate/) | Translate local PDFs, online papers (including arXiv), and blog posts into bilingual English-Chinese Markdown with paragraph-by-paragraph comparison. PDF extraction uses Marker, PyMuPDF, and Tesseract/EasyOCR. |
 | [`md_to_pdf`](md_to_pdf/) | Convert Markdown files to professionally formatted A4 PDF documents with auto-generated table of contents, academic paper typography, and smart page breaks. |
 
 ## Project Structure
@@ -18,7 +18,7 @@ ai_tools/
 ├── claude.md                 # AI agent project guide
 ├── LICENSE                   # MIT License
 │
-├── translate_pdf/            # Tool: PDF bilingual translation (EN → ZH)
+├── translate/            # Tool: document bilingual translation (EN → ZH)
 │   ├── SKILL.md              # Cursor Skill definition
 │   ├── extract_pdf.py        # PDF extraction script
 │   ├── requirements.txt      # Python dependencies
@@ -57,23 +57,35 @@ Options:
 #### 1. Link skills into Cursor
 
 ```bash
-ln -sfn "$(pwd)/translate_pdf" ~/.cursor/skills/translate-pdf
+ln -sfn "$(pwd)/translate" ~/.cursor/skills/translate
 ln -sfn "$(pwd)/md_to_pdf"     ~/.cursor/skills/md-to-pdf
 ```
 
 #### 2. Install dependencies
 
-**translate_pdf:**
+Both tools share the repository's `.venv`. The installer creates it when needed;
+use `PYTHON_BIN` to select a compatible Python interpreter. For an AMD MI355X
+machine with ROCm 10.1:
 
 ```bash
-pip install -r translate_pdf/requirements.txt
+ROCM_DEVICE=gfx950 ./install.sh --deps-only --gpu amd
+source .venv/bin/activate
+```
+
+Install the matching ROCm build of PyTorch before the remaining PDF dependencies;
+see the [AMD PyTorch installation guide](https://rocm.docs.amd.com/projects/ai-ecosystem/en/latest/frameworks/pytorch/install.html).
+
+**translate:**
+
+```bash
+python -m pip install -r translate/requirements.txt
 sudo apt-get install tesseract-ocr          # optional, for OCR
 ```
 
 **md_to_pdf:**
 
 ```bash
-pip install markdown weasyprint Pygments
+python -m pip install -r md_to_pdf/requirements.txt
 sudo apt-get install libpango1.0-dev libcairo2-dev libgdk-pixbuf-2.0-dev libffi-dev shared-mime-info
 sudo apt-get install fonts-noto-cjk         # Chinese font support
 ```
@@ -96,7 +108,7 @@ The Agent will automatically invoke the corresponding Skill.
 
 ```bash
 # PDF extraction (translation is done by the Cursor Agent)
-python3 translate_pdf/extract_pdf.py input.pdf [output_dir] [--no-ocr]
+python3 translate/extract_pdf.py input.pdf [output_dir] [--no-ocr]
 
 # Markdown to PDF
 python3 md_to_pdf/convert.py input.md [-o output.pdf] [--no-toc]
@@ -104,7 +116,7 @@ python3 md_to_pdf/convert.py input.md [-o output.pdf] [--no-toc]
 
 ## Tips
 
-For better document generation quality (especially with `translate_pdf` and `md_to_pdf`), consider adding a Cursor Rule to guide the Agent's writing style. Create `~/.cursor/rules/documentation.mdc` (global) or `<project>/.cursor/rules/documentation.mdc` (per-project) with your preferences — for example, preferred language, LaTeX math notation, Mermaid diagrams, etc. See [`.cursor/rules/documentation.mdc`](.cursor/rules/documentation.mdc) for a reference.
+For better document generation quality (especially with `translate` and `md_to_pdf`), consider adding a Cursor Rule to guide the Agent's writing style. Create `~/.cursor/rules/documentation.mdc` (global) or `<project>/.cursor/rules/documentation.mdc` (per-project) with your preferences — for example, preferred language, LaTeX math notation, Mermaid diagrams, etc. See [`.cursor/rules/documentation.mdc`](.cursor/rules/documentation.mdc) for a reference.
 
 ## Adding a New Tool
 

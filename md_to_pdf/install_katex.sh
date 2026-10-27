@@ -17,16 +17,55 @@ log() { printf "[install_katex] %s\n" "$*"; }
 die() { printf "[install_katex] ERROR: %s\n" "$*" >&2; exit 1; }
 
 # ---------------------------------------------------------------------------
-# 1. Preflight: node >= 16
+# 1. Preflight: ensure a usable node (>= 16), auto-installing if needed.
+#    Order: existing PATH node -> Cursor Server bundled node -> apt Node 18.
+#    Override with NODE_NO_AUTOINSTALL=1 to disable the apt step.
 # ---------------------------------------------------------------------------
-command -v node >/dev/null 2>&1 \
-    || die "node not found. Install Node.js 16+ (fnm/nvm don't need sudo)."
+_node_major() { node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0; }
 
-node_major=$(node -p 'process.versions.node.split(".")[0]')
-if [ "$node_major" -lt 16 ]; then
-    die "Node >= 16 required, got $(node -v)."
-fi
-log "node $(node -v) OK"
+ensure_node() {
+    # (a) A good node already on PATH?
+    if command -v node >/dev/null 2>&1 && [ "$(_node_major)" -ge 16 ]; then
+        log "node $(node -v) OK"
+        return 0
+    fi
+
+    # (b) Reuse a Cursor Server bundled node (>= 16) — no download, no sudo.
+    local cand best="" best_maj=0 v
+    for cand in "$HOME"/.cursor-server/bin/*/node; do
+        [ -x "$cand" ] || continue
+        v=$("$cand" -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)
+        if [ "${v:-0}" -ge 16 ] && [ "${v:-0}" -ge "$best_maj" ]; then
+            best="$cand"; best_maj="$v"
+        fi
+    done
+    if [ -n "$best" ]; then
+        export PATH="$(dirname "$best"):$PATH"
+        log "using Cursor Server bundled node $(node -v) from $(dirname "$best")"
+        return 0
+    fi
+
+    # (c) Install Node 18 LTS via apt (satisfies the >= 16 requirement).
+    if [ "${NODE_NO_AUTOINSTALL:-0}" != "1" ] && command -v apt-get >/dev/null 2>&1; then
+        local SUDO=""
+        if [ "$(id -u)" -ne 0 ]; then
+            if sudo -n true 2>/dev/null; then SUDO="sudo"; fi
+        fi
+        if [ "$(id -u)" -eq 0 ] || [ -n "$SUDO" ]; then
+            log "node not found; installing Node.js 18 LTS via apt-get ..."
+            $SUDO apt-get update -y >/dev/null 2>&1 || true
+            $SUDO apt-get install -y nodejs >/dev/null 2>&1 || true
+        fi
+    fi
+
+    command -v node >/dev/null 2>&1 || die \
+        "node not found and auto-install failed. Install Node.js 16+ manually: \
+apt: 'sudo apt-get install -y nodejs'; or nvm/fnm (no sudo)."
+    [ "$(_node_major)" -ge 16 ] || die "Node >= 16 required, got $(node -v)."
+    log "node $(node -v) OK"
+}
+
+ensure_node
 
 command -v python3 >/dev/null 2>&1 || die "python3 not found."
 

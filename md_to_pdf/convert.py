@@ -54,11 +54,11 @@ CSS = r"""
 /* ===== Page setup ===== */
 @page {
     size: A4;
-    margin: 25mm 22mm 28mm 22mm;
+    margin: 18mm 20mm 22mm 20mm;
     @bottom-center {
         content: counter(page);
         font-family: "Times New Roman", serif;
-        font-size: 10pt;
+        font-size: 9pt;
         color: #555;
     }
 }
@@ -70,8 +70,8 @@ CSS = r"""
 body {
     font-family: "Noto Serif CJK SC", "Source Han Serif SC", "SimSun",
                  "Times New Roman", "Georgia", serif;
-    font-size: 10pt;
-    line-height: 1.6;
+    font-size: 9.5pt;
+    line-height: 1.35;
     color: #222;
     text-align: justify;
     word-wrap: break-word;
@@ -85,14 +85,14 @@ body {
 .toc-title {
     text-align: center;
     font-size: 14pt;
-    margin-top: 3em;
-    margin-bottom: 1.5em;
+    margin-top: 2em;
+    margin-bottom: 1em;
     letter-spacing: 0.5em;
     font-family: "Noto Sans CJK SC", "Source Han Sans SC",
                  "Microsoft YaHei", sans-serif;
 }
 .toc ul        { list-style: none; padding-left: 0; }
-.toc li        { margin: 0.25em 0; line-height: 1.6; }
+.toc li        { margin: 0.15em 0; line-height: 1.35; }
 .toc a         { color: #222; text-decoration: none; }
 .toc ul ul     { padding-left: 1.5em; }
 
@@ -101,19 +101,19 @@ h1, h2, h3, h4, h5, h6 {
     font-family: "Noto Sans CJK SC", "Source Han Sans SC",
                  "Microsoft YaHei", "Helvetica Neue", sans-serif;
     page-break-after: avoid;
-    margin-top: 1.4em;
-    margin-bottom: 0.4em;
+    margin-top: 0.8em;
+    margin-bottom: 0.3em;
 }
 .content > h1:first-child {
     text-align: center;
-    font-size: 17pt;
-    margin-top: 1.5em;
-    margin-bottom: 0.8em;
+    font-size: 15pt;
+    margin-top: 1em;
+    margin-bottom: 0.5em;
 }
-h1 { font-size: 12pt; }
+h1 { font-size: 11.5pt; }
 h2 { font-size: 10.5pt; border-bottom: 0.5pt solid #ccc; padding-bottom: 0.15em; }
 h3 { font-size: 10pt; }
-h4 { font-size: 10pt; }
+h4 { font-size: 9.5pt; }
 
 /* ===== Page-break safety ===== */
 table, figure, pre, .codehilite, blockquote, img {
@@ -122,14 +122,23 @@ table, figure, pre, .codehilite, blockquote, img {
 h1, h2, h3, h4, h5, h6 {
     page-break-after: avoid;
 }
+/* Force a new page before each top-level "Chapter N" heading. */
+h1.chapter {
+    page-break-before: always;
+}
+/* Don't break before the very first chapter when it sits right after the
+   auto-TOC page (the TOC itself already does page-break-after: always). */
+.toc-page + .content > h1.chapter:first-child {
+    page-break-before: avoid;
+}
 p { orphans: 3; widows: 3; }
 
 /* ===== Tables ===== */
 table {
     border-collapse: collapse;
     width: 100%;
-    margin: 1em 0;
-    font-size: 9pt;
+    margin: 0.6em 0;
+    font-size: 8.5pt;
 }
 th, td {
     border: 1px solid #777;
@@ -147,16 +156,16 @@ img {
     max-height: 230mm;
     height: auto;
     display: block;
-    margin: 1em auto;
+    margin: 0.7em auto;
 }
 figure {
-    margin: 1.2em auto;
+    margin: 0.8em auto;
     text-align: center;
 }
 figcaption {
-    font-size: 8pt;
+    font-size: 8.5pt;
     color: #555;
-    margin-top: 0.3em;
+    margin-top: 0.25em;
     page-break-before: avoid;
 }
 
@@ -165,62 +174,80 @@ pre {
     background: #f7f7f7;
     border: 0.5pt solid #ddd;
     border-radius: 3px;
-    padding: 10px 14px;
-    font-size: 9pt;
-    line-height: 1.4;
+    padding: 6px 10px;
+    font-size: 8.5pt;
+    line-height: 1.3;
     overflow-wrap: break-word;
     white-space: pre-wrap;
 }
 code {
     font-family: "Consolas", "Source Code Pro", "Menlo", monospace;
-    font-size: 9pt;
+    font-size: 8.5pt;
 }
 p code, li code {
     background: #f0f0f0;
     padding: 1px 4px;
     border-radius: 3px;
-    font-size: 9pt;
+    font-size: 8.5pt;
 }
 
 /* ===== Blockquote ===== */
 blockquote {
     border-left: 3px solid #bbb;
-    padding: 0.4em 1em;
-    margin: 0.8em 0;
+    padding: 0.25em 0.8em;
+    margin: 0.4em 0;
     color: #444;
     background: #fafafa;
 }
 
 /* ===== Misc ===== */
 a        { color: #2a5db0; text-decoration: none; }
-p        { margin: 0.6em 0; }
-ul, ol   { padding-left: 2em; margin: 0.5em 0; }
-li       { margin: 0.15em 0; }
-hr       { border: none; border-top: 0.5pt solid #ccc; margin: 2em 0; }
-.footnote    { font-size: 9pt; color: #555; }
-.footnote hr { border-top: 0.5pt solid #ddd; margin: 1em 0 0.5em; }
+p        { margin: 0.35em 0; }
+ul, ol   { padding-left: 2em; margin: 0.3em 0; }
+li       { margin: 0.1em 0; }
+hr       { border: none; border-top: 0.5pt solid #ccc; margin: 1.2em 0; }
+.footnote    { font-size: 8.5pt; color: #555; }
+.footnote hr { border-top: 0.5pt solid #ddd; margin: 0.8em 0 0.4em; }
 
 /* ===== Pygments (codehilite) ===== */
-.codehilite { margin: 1em 0; }
+.codehilite { margin: 0.6em 0; }
 
 /* ===== Math ===== */
-.math-display { text-align: center; margin: 0.8em 0; }
+.math-display { text-align: center; margin: 0.5em 0; }
 .math-display img { display: inline-block; max-width: 90%; }
 img.math-inline { display: inline; height: auto; margin: 0; vertical-align: -0.4em; }
 math { font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math",
                      "Noto Serif CJK SC", serif; }
-math[display="block"] { display: block; text-align: center; margin: 0.8em 0; }
+math[display="block"] { display: block; text-align: center; margin: 0.5em 0; }
 
 /* ===== Mermaid diagrams ===== */
 figure.mermaid-figure {
-    margin: 1.2em auto;
+    margin: 0.8em auto;
     text-align: center;
     page-break-inside: avoid;
     break-inside: avoid;
 }
+figure.mermaid-figure {
+    /* Allow large diagrams to land on their own page so they can use the
+       full available height (~250mm) without being shrunk to fit beside
+       running text. The figure itself still respects page-break-inside. */
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
+/* Glue an H2 to the first mermaid figure in its section so the heading
+   doesn't get stranded on the previous page when the figure overflows.
+   See _group_h2_with_mermaid in convert.py. */
+.section-with-figure {
+    break-inside: avoid;
+    page-break-inside: avoid;
+}
 figure.mermaid-figure svg {
     max-width: 100%;
-    max-height: 220mm;
+    /* Capped below the actual page text height (~257mm on A4 with the
+       page margins above) so that an H2 + the figure can fit together on
+       one page without forcing WeasyPrint to break inside the
+       section-with-figure wrapper. */
+    max-height: 232mm;
     height: auto;
     display: block;
     margin: 0 auto;
@@ -503,8 +530,33 @@ def _render_mermaid_batch(items):
         '<script>\n'
         '(async () => {\n'
         '  try {\n'
-        '    mermaid.initialize({ startOnLoad: false, theme: "default", '
-        'securityLevel: "loose", flowchart: { htmlLabels: true } });\n'
+        '    // Force the layout fonts we want mermaid to *measure with* to be\n'
+        '    // loaded before any node-width measurement happens; otherwise\n'
+        '    // chromium uses a fallback font (often DejaVu) whose advance\n'
+        '    // widths differ from Noto Sans CJK SC, and node boxes end up\n'
+        '    // sized for the wrong font.\n'
+        '    try {\n'
+        '      await Promise.all([\n'
+        '        document.fonts.load("16px \\"Noto Sans CJK SC\\""),\n'
+        '        document.fonts.load("italic 16px \\"Noto Sans CJK SC\\""),\n'
+        '        document.fonts.load("bold 16px \\"Noto Sans CJK SC\\""),\n'
+        '        document.fonts.ready\n'
+        '      ]);\n'
+        '    } catch (_) { /* font load best-effort */ }\n'
+        '    mermaid.initialize({\n'
+        '      startOnLoad: false, theme: "default", securityLevel: "loose",\n'
+        '      themeVariables: { fontSize: "16px", fontFamily: '
+        '"\'Noto Sans CJK SC\', \'Source Han Sans SC\', '
+        '\'Microsoft YaHei\', \'Helvetica Neue\', sans-serif" },\n'
+        '      themeCSS: ".nodeLabel, .label, foreignObject div { '
+        'max-width: none !important; white-space: nowrap !important; }",\n'
+        '      flowchart: { htmlLabels: false, useMaxWidth: false, padding: 8, '
+        'nodeSpacing: 18, rankSpacing: 18 },\n'
+        '      sequence: { useMaxWidth: false, actorFontSize: 14, '
+        'noteFontSize: 13, messageFontSize: 13 },\n'
+        '      state: { useMaxWidth: false, padding: 16 },\n'
+        '      class: { htmlLabels: false }\n'
+        '    });\n'
         f'    const items = {payload_js};\n'
         '    for (const it of items) {\n'
         '      try {\n'
@@ -630,6 +682,14 @@ def _scrub_svg_for_weasyprint(svg, style_blocks):
          recognized as paint servers and their attributes dump as text.
          Mitigation: move them inside <defs>, which is never rendered as
          visible content but still resolvable via url(#...).
+      3. <foreignObject> embedding XHTML is silently ignored, so mermaid's
+         flowchart / stateDiagram / classDiagram node labels disappear
+         entirely (mermaid v10+ uses foreignObject for all node labels even
+         with htmlLabels:false; only edge labels switch to native <text>).
+         Mitigation: parse each foreignObject's embedded <p>...</p>, split
+         on <br>, rewrite as a centered native SVG <text> element with one
+         <tspan> per line. <strong>/<em>/<code> are mapped to font-weight,
+         font-style, font-family on the corresponding tspans.
     The raw CSS is also surfaced via ``style_blocks`` so the caller can
     mirror it to the document <head> as defense-in-depth.
     """
@@ -644,6 +704,9 @@ def _scrub_svg_for_weasyprint(svg, style_blocks):
 
     if captured_styles:
         svg = _inline_css_into_svg(svg, "\n".join(captured_styles))
+
+    svg = _foreignobject_to_text(svg)
+    svg = _normalize_text_runs(svg)
 
     def_tags_alt = "|".join(_DEF_LIKE_TAGS)
     def_pattern = re.compile(
@@ -667,6 +730,311 @@ def _scrub_svg_for_weasyprint(svg, style_blocks):
         )
 
     return svg
+
+
+# --- foreignObject -> SVG <text> rewrite -----------------------------------
+#
+# mermaid v10+ emits node labels (and a few decorative elements) as
+#     <foreignObject width="W" height="H">
+#       <div xmlns="http://www.w3.org/1999/xhtml" style="...">
+#         <span class="nodeLabel "><p style="margin: 0">line1<br>line2</p></span>
+#       </div>
+#     </foreignObject>
+# WeasyPrint silently drops the entire <foreignObject>, so flowchart /
+# stateDiagram / classDiagram node text disappears in the PDF. Edge labels
+# already use native <text> and are unaffected. We rewrite the foreignObject
+# in-place with a native <text> element using the foreignObject's own
+# width/height so that anchoring / centering match what mermaid laid out.
+#
+# Inline emphasis (<strong>/<b>, <em>/<i>, <code>) is preserved by emitting
+# nested <tspan> with font-weight / font-style / font-family overrides.
+# Other inline tags are stripped to their text content.
+
+import html as _html
+
+_FO_RE = re.compile(r"<foreignObject\b([^>]*)>([\s\S]*?)</foreignObject>",
+                    re.IGNORECASE)
+_FO_FONT_SIZE = 14.0
+_FO_LINE_HEIGHT = 16.5  # px between successive line baselines (≈1.18 × font-size)
+# Note: mermaid v10+ usually emits node labels as native <text>+<tspan> when
+# htmlLabels is false, so this foreignObject conversion is the safety net for
+# diagram types where mermaid still falls back to foreignObject (some
+# stateDiagram-v2 / classDiagram / erDiagram variants).
+
+
+def _attr(attrs_text, name):
+    m = re.search(rf'\b{name}\s*=\s*"([^"]*)"', attrs_text)
+    return m.group(1) if m else None
+
+
+def _line_segments(line):
+    """Split a single-line HTML fragment into [(text, style_dict), ...].
+
+    Recognised tags: <strong>/<b>, <em>/<i>, <code>. Unknown tags are
+    stripped (their text content is preserved in surrounding context).
+    Entities are decoded. The output text is XML-escaped by the caller.
+    """
+    segs = []
+    style_stack = []
+    pos = 0
+    tag_re = re.compile(r"<(/?)([a-zA-Z][\w:-]*)\b[^>]*>")
+    style_for = {
+        "strong": ("font-weight", "bold"),
+        "b": ("font-weight", "bold"),
+        "em": ("font-style", "italic"),
+        "i": ("font-style", "italic"),
+        "code": ("font-family", "monospace"),
+    }
+    for tm in tag_re.finditer(line):
+        if tm.start() > pos:
+            chunk = line[pos:tm.start()]
+            if chunk:
+                cur = {}
+                for k, v in style_stack:
+                    cur[k] = v
+                segs.append((_html.unescape(chunk), cur))
+        tag = tm.group(2).lower()
+        closing = tm.group(1) == "/"
+        kv = style_for.get(tag)
+        if kv is not None:
+            if closing:
+                # Pop the most recent matching style entry.
+                for i in range(len(style_stack) - 1, -1, -1):
+                    if style_stack[i] == kv:
+                        style_stack.pop(i)
+                        break
+            else:
+                style_stack.append(kv)
+        pos = tm.end()
+    if pos < len(line):
+        chunk = line[pos:]
+        if chunk:
+            cur = {k: v for (k, v) in style_stack}
+            segs.append((_html.unescape(chunk), cur))
+    # Coalesce empty leading/trailing segments but keep internal whitespace.
+    return [s for s in segs if s[0] != ""]
+
+
+def _xml_escape(text):
+    return (
+        text.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+    )
+
+
+# --- mermaid <text> tspan normalization ------------------------------------
+#
+# When a node label contains markdown emphasis (e.g. ``__shared__``), mermaid
+# emits a <text> element with a flat list of sibling <tspan>s, where the
+# emphasised tspan carries an ``x``/``dy`` line position and the trailing
+# plain text tspans omit positioning attributes:
+#
+#     <text text-anchor="middle">
+#       <tspan x="X" y="Y">Title line</tspan>
+#       <tspan x="X" dy="DY" font-weight="bold">shared</tspan>  <!-- new line -->
+#       <tspan> uint4 input_lds[2·48]</tspan>                    <!-- same line -->
+#       <tspan x="X" dy="DY" font-weight="bold">shared</tspan>  <!-- new line -->
+#       <tspan> uint4 output_lds[max 288, 32]</tspan>            <!-- same line -->
+#     </text>
+#
+# SVG 1.1 says the unpositioned tspan continues from the end of the previous
+# tspan on the same line, with the parent text's ``text-anchor`` applied
+# across the entire computed run. WeasyPrint's SVG renderer instead treats
+# each unpositioned tspan as if it were anchored at the parent text's x,
+# which makes the bold and trailing tspans collapse on top of each other.
+#
+# Mitigation: per <text>, group consecutive tspans into "runs" — every tspan
+# carrying its own ``x`` (or ``y``) attribute starts a new run, and following
+# tspans without ``x``/``y`` join the same run. Each run is rewritten as a
+# single outer <tspan> that carries the run's ``x``/``y``/``dy`` and contains
+# the original tspans as nested children. WeasyPrint applies the outer
+# tspan's anchor once and the nested tspans then flow correctly.
+
+_TEXT_BLOCK_RE = re.compile(r"<text\b([^>]*)>([\s\S]*?)</text>", re.IGNORECASE)
+_TSPAN_OPEN_RE = re.compile(
+    r"<tspan\b([^>]*)>([\s\S]*?)</tspan>", re.IGNORECASE
+)
+
+
+def _normalize_text_runs(svg):
+    def _rewrite_text(m):
+        text_attrs = m.group(1)
+        body = m.group(2)
+        spans = list(_TSPAN_OPEN_RE.finditer(body))
+        if len(spans) <= 1:
+            return m.group(0)
+
+        # Emit fragments back: copy any inter-span content (whitespace) verbatim
+        # but rebuild the tspan list grouped into runs.
+        runs = []  # list of {anchor_attrs: str, items: [(attrs, content), ...]}
+        cur_run = None
+        for sm in spans:
+            attrs = sm.group(1)
+            content = sm.group(2)
+            has_x = re.search(r'\bx\s*=\s*"', attrs) is not None
+            has_y = re.search(r'\by\s*=\s*"', attrs) is not None
+            if has_x or has_y or cur_run is None:
+                cur_run = {"anchor_attrs": attrs, "items": []}
+                runs.append(cur_run)
+                cur_run["items"].append({"attrs": attrs, "content": content,
+                                          "is_anchor": True})
+            else:
+                cur_run["items"].append({"attrs": attrs, "content": content,
+                                          "is_anchor": False})
+
+        # If every run already has exactly one tspan, no rewrite is needed
+        # (the original SVG was already well-formed for our purposes).
+        if all(len(r["items"]) == 1 for r in runs):
+            return m.group(0)
+
+        out_parts = []
+        for run in runs:
+            if len(run["items"]) == 1:
+                only = run["items"][0]
+                out_parts.append(f"<tspan{only['attrs']}>{only['content']}</tspan>")
+                continue
+            # Build outer tspan with the anchor's positioning attrs only;
+            # strip styling attrs (font-weight, style, font-style, font-family)
+            # off the outer so they don't leak onto the trailing siblings.
+            outer_attrs = _strip_style_attrs(run["items"][0]["attrs"])
+            inner_chunks = []
+            for it in run["items"]:
+                inner_attrs = _strip_position_attrs(it["attrs"])
+                inner_chunks.append(
+                    f"<tspan{inner_attrs}>{it['content']}</tspan>"
+                )
+            out_parts.append(
+                f"<tspan{outer_attrs}>{''.join(inner_chunks)}</tspan>"
+            )
+
+        return f"<text{text_attrs}>{''.join(out_parts)}</text>"
+
+    return _TEXT_BLOCK_RE.sub(_rewrite_text, svg)
+
+
+_POS_ATTR_RE = re.compile(
+    r'\s+(?:x|y|dx|dy)\s*=\s*"[^"]*"', re.IGNORECASE
+)
+_STYLE_ATTR_RE = re.compile(
+    r'\s+(?:font-weight|font-style|font-family|fill|stroke|style|class)\s*=\s*"[^"]*"',
+    re.IGNORECASE,
+)
+
+
+def _strip_style_attrs(attrs):
+    return _STYLE_ATTR_RE.sub("", attrs)
+
+
+def _strip_position_attrs(attrs):
+    return _POS_ATTR_RE.sub("", attrs)
+
+
+def _foreignobject_to_text(svg):
+    """Rewrite each <foreignObject>...</foreignObject> as a native <text>."""
+
+    def _replace(m):
+        attrs_text = m.group(1)
+        inner = m.group(2)
+
+        try:
+            w = float(_attr(attrs_text, "width") or 0)
+            h = float(_attr(attrs_text, "height") or 0)
+        except ValueError:
+            w = h = 0.0
+
+        # Pull out the <p>...</p> body if present; otherwise use the
+        # foreignObject's text as-is (some mermaid diagrams wrap labels in
+        # just a <span> without a <p>).
+        body = inner
+        p_m = re.search(r"<p\b[^>]*>([\s\S]*?)</p>", inner)
+        if p_m:
+            body = p_m.group(1)
+        else:
+            span_m = re.search(r"<span\b[^>]*>([\s\S]*?)</span>", inner)
+            if span_m:
+                body = span_m.group(1)
+
+        # Split on <br> variants.
+        raw_lines = re.split(r"<br\s*/?>", body, flags=re.IGNORECASE)
+
+        # Build per-line segments; drop leading/trailing whitespace-only
+        # lines but keep blank lines in the middle (rare in mermaid).
+        line_segs = []
+        for raw in raw_lines:
+            segs = _line_segments(raw)
+            line_segs.append(segs)
+        while line_segs and not any(s[0].strip() for s in line_segs[0]):
+            line_segs.pop(0)
+        while line_segs and not any(s[0].strip() for s in line_segs[-1]):
+            line_segs.pop()
+
+        if not line_segs:
+            return ""  # genuinely empty label; drop the slot entirely
+
+        n = len(line_segs)
+        font_size = _FO_FONT_SIZE
+        line_h = _FO_LINE_HEIGHT
+        # Vertical centering: place the first baseline so the multi-line
+        # block is centered in the foreignObject's own bounding box.
+        # ascent ≈ 0.8 * font-size for typical sans-serif fonts.
+        total_h = (n - 1) * line_h + font_size
+        first_baseline = (h - total_h) / 2.0 + font_size * 0.85
+        if h <= 0:
+            # Fallback when foreignObject has no measured height.
+            first_baseline = font_size * 0.85
+        x_center = w / 2.0 if w > 0 else 0.0
+
+        tspans = []
+        for i, segs in enumerate(line_segs):
+            if not segs:
+                # Preserve visually-blank lines by emitting an empty tspan
+                # so the dy advance still happens.
+                if i == 0:
+                    tspans.append(
+                        f'<tspan x="{x_center:.3f}" '
+                        f'y="{first_baseline:.3f}"></tspan>'
+                    )
+                else:
+                    tspans.append(
+                        f'<tspan x="{x_center:.3f}" '
+                        f'dy="{line_h:.3f}"></tspan>'
+                    )
+                continue
+            line_tspans = []
+            for j, (text, style) in enumerate(segs):
+                style_attr = ""
+                if style:
+                    style_attr = ' style="' + "; ".join(
+                        f"{k}: {v}" for k, v in style.items()
+                    ) + '"'
+                if j == 0:
+                    if i == 0:
+                        anchor = (
+                            f'x="{x_center:.3f}" y="{first_baseline:.3f}"'
+                        )
+                    else:
+                        anchor = (
+                            f'x="{x_center:.3f}" dy="{line_h:.3f}"'
+                        )
+                else:
+                    anchor = ""
+                escaped = _xml_escape(text)
+                line_tspans.append(
+                    f"<tspan {anchor}{style_attr}>{escaped}</tspan>"
+                )
+            tspans.append("".join(line_tspans))
+
+        body_xml = "".join(tspans)
+        return (
+            '<text text-anchor="middle" '
+            'font-family="\'Noto Sans CJK SC\', \'Source Han Sans SC\', '
+            "'Microsoft YaHei', 'Helvetica Neue', sans-serif\" "
+            f'font-size="{font_size:.1f}" fill="#333">{body_xml}</text>'
+        )
+
+    return _FO_RE.sub(_replace, svg)
 
 
 # --- Tiny CSS-to-inline-style applier scoped to a single mermaid SVG ----------
@@ -1013,6 +1381,67 @@ def _wrap_images(html):
     return re.sub(r"<img\b[^>]*>", _repl, html)
 
 
+_H2_FIGURE_RE = re.compile(
+    r'(<h2\b[^>]*>[\s\S]*?</h2>)'
+    r'((?:(?!<h[12]\b)[\s\S])*?)'
+    r'(<figure class="mermaid-figure">[\s\S]*?</figure>)',
+    re.IGNORECASE,
+)
+
+
+def _group_h2_with_mermaid(html):
+    """Glue each H2 to the first mermaid figure inside its section.
+
+    Without this, when a tall mermaid figure cannot fit in the page's
+    remaining vertical space, WeasyPrint pushes only the figure to the
+    next page and strands the H2 (and any short blockquote between them)
+    on the previous page, wasting nearly a whole page. Wrapping
+    ``<h2>...</h2>...<figure>...</figure>`` into a single
+    ``<div class="section-with-figure">`` with ``break-inside: avoid``
+    forces the title to travel along with the figure when paging.
+    """
+
+    def _wrap(m):
+        h2 = m.group(1)
+        between = m.group(2)
+        fig = m.group(3)
+        return (
+            f'<div class="section-with-figure">'
+            f'{h2}{between}{fig}'
+            f'</div>'
+        )
+
+    return _H2_FIGURE_RE.sub(_wrap, html)
+
+
+def _toc_with_heading_breaks(toc_html: str, tokens: list[dict]) -> str:
+    """Keep heading language breaks in TOC links without blank spacer lines."""
+    for token in tokens:
+        heading_html = token.get("html", "")
+        if not token.get("data-toc-label") and re.search(
+            r"<br\s*/?>", heading_html, re.IGNORECASE
+        ):
+            # Keep the TOC's plain labels while retaining language separators.
+            label = re.sub(
+                r"<(?!br\s*/?>)[^>]+>", "", heading_html, flags=re.IGNORECASE
+            )
+            # Body headings may use paragraph spacing; TOC entries stay compact.
+            label = re.sub(
+                r"<br\s*/?>(?:\s*<br\s*/?>)+", "<br>", label, flags=re.IGNORECASE
+            )
+            target = _html.escape(token["id"], quote=True)
+            pattern = r'(<a href="#' + re.escape(target) + r'">).*?(</a>)'
+            toc_html = re.sub(
+                pattern,
+                lambda match: match[1] + label + match[2],
+                toc_html,
+                count=1,
+                flags=re.DOTALL,
+            )
+        toc_html = _toc_with_heading_breaks(toc_html, token.get("children", []))
+    return toc_html
+
+
 def convert(input_path, output_path=None, no_toc=False, title=None):
     src = Path(input_path).resolve()
     if not src.exists():
@@ -1024,6 +1453,16 @@ def convert(input_path, output_path=None, no_toc=False, title=None):
     md_text = src.read_text(encoding="utf-8")
     md_text = re.sub(r"^\[TOC\]\s*$", "", md_text, flags=re.MULTILINE | re.IGNORECASE)
 
+    # Tag top-level "Chapter N. ..." H1 headings with {.chapter} so they get
+    # `page-break-before: always` from CSS. Sub-section H1s like "1.1.2." are
+    # left alone, so smaller headings don't force a new page.
+    md_text = re.sub(
+        r"^(#\s+(?:<span[^>]*></span>\s*)?\*{0,2}Chapter\s+\d+[.\s].*?)(\s*\{[^}]*\})?\s*$",
+        lambda m: m.group(1).rstrip() + " {.chapter}",
+        md_text,
+        flags=re.MULTILINE,
+    )
+
     # Separate consecutive lines starting with [number] (e.g. reference lists)
     # so Markdown treats each as its own paragraph instead of merging them.
     md_text = re.sub(
@@ -1034,6 +1473,7 @@ def convert(input_path, output_path=None, no_toc=False, title=None):
 
     title_match = re.search(r"^#\s+(.+)$", md_text, re.MULTILINE)
     doc_title = title or (title_match.group(1).strip() if title_match else src.stem)
+    doc_title = re.sub(r"(?:<br\s*/?>\s*)+", " / ", doc_title, flags=re.IGNORECASE)
 
     # Extract mermaid fences first so the source isn't mangled by
     # markdown's inline parser (e.g. underscores in identifiers).
@@ -1067,6 +1507,7 @@ def convert(input_path, output_path=None, no_toc=False, title=None):
     body = _wrap_images(body)
     body = _restore_math(body, math_store)
     body, mermaid_css = _restore_mermaid(body, mermaid_store)
+    body = _group_h2_with_mermaid(body)
 
     toc_section = ""
     has_toc = _has_manual_toc(md_text)
@@ -1074,7 +1515,7 @@ def convert(input_path, output_path=None, no_toc=False, title=None):
         toc_section = (
             '<div class="toc-page">'
             '<h1 class="toc-title">目 录</h1>'
-            f'<div class="toc">{md.toc}</div>'
+            f'<div class="toc">{_toc_with_heading_breaks(md.toc, md.toc_tokens)}</div>'
             "</div>"
         )
 
@@ -1083,7 +1524,7 @@ def convert(input_path, output_path=None, no_toc=False, title=None):
     html_str = (
         "<!DOCTYPE html>"
         '<html lang="zh-CN"><head><meta charset="utf-8">'
-        f"<title>{doc_title}</title>"
+        f"<title>{_html.escape(doc_title)}</title>"
         f"<style>{CSS}"
         f"{_HtmlFormatter(style='default').get_style_defs('.codehilite') if pygments else ''}"
         f"{katex_css}"

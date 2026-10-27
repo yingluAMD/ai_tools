@@ -1,6 +1,6 @@
-# translate_pdf — PDF 双语翻译工具
+# translate — 技术文档双语翻译工具
 
-将英文技术 PDF（论文、规范、幻灯片）翻译为**中英双语对照的 Markdown 文档**。本工具采用"脚本提取 + Agent 翻译"的两阶段架构：Python 脚本负责从 PDF 中忠实提取文本、公式、代码、图片，AI Agent 按既定规则逐段翻译并生成双语稿。
+将本地 PDF、网络论文（包括 arXiv）和博客翻译为**中英双语对照的 Markdown 文档**。本工具采用"脚本提取 + Agent 翻译"的两阶段架构：PDF 分支由 Python 脚本提取文本、公式、代码和图片；HTML 全文由 Agent 整理为统一输入，再按既定规则逐段翻译并生成双语稿。
 
 ---
 
@@ -23,7 +23,7 @@
 ## 目录结构
 
 ```
-translate_pdf/
+translate/
 ├── __init__.py          # 包声明，版本号
 ├── extract_pdf.py       # 提取脚本（本包的唯一可执行入口）
 ├── requirements.txt     # Python 依赖清单
@@ -59,7 +59,7 @@ sudo apt-get install tesseract-ocr
 
 ### 3. GPU（可选但推荐）
 
-若机器有 NVIDIA GPU，装对应 CUDA 版本的 PyTorch 后，脚本会自动启用 GPU 加速 Marker 和 EasyOCR。
+NVIDIA GPU 使用对应 CUDA 版本的 PyTorch；AMD GPU 使用匹配 ROCm 的版本。ROCm 版 PyTorch 同样通过 `torch.cuda` 接口调用 GPU，脚本可自动启用 Marker 和 EasyOCR 加速。
 
 ---
 
@@ -69,7 +69,7 @@ sudo apt-get install tesseract-ocr
 
 ### 方式一：作为 Cursor Skill 使用（推荐）
 
-将本目录放到 Cursor 的 skills 目录下（如 `~/.cursor/skills/translate-pdf/`），然后对 Agent 说：
+将本目录放到 Cursor 的 skills 目录下（如 `~/.cursor/skills/translate/`），然后对 Agent 说：
 
 > "翻译这个 PDF `~/papers/attention.pdf`"
 
